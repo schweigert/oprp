@@ -82,15 +82,27 @@ matrix_t *matrix_multiply(matrix_t *matrix_a, matrix_t *matrix_b) {
 matrix_t *matrix_sort(matrix_t *matrix_a) {
    int i, j;
    double swap;
-   double *vector = data[0];
    int max = matrix_a->rows * matrix_a->cols;
    matrix_t *matrix_r = matrix_create(matrix_a->rows, matrix_a->cols);
+
+   double *vector = matrix_r->data[0];
+
+   for (i = 0; i < max; i++) {
+      vector[i] = matrix_a->data[0][i];
+      
+      for (j = 0; j < i; j++) {
+         if (vector[i] < vector[j]) {
+            swap = vector[i];
+            vector[i] = vector[j];
+            vector[j] = swap;
+         }
+      }
+   }
 
    return matrix_r;
 }
 
 void matrix_print(matrix_t *m) {
-   
    int i, j;
    for (i = 0; i < m->rows; i++) {
       for (j = 0; j < m->cols; j++) {
