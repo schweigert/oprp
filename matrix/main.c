@@ -17,23 +17,13 @@ void doSomething(int nrows, int ncols) {
    matrix_t* matrix_two = matrix_create(nrows, ncols);
    matrix_randfill(matrix_two);
 
-   printf("Matrix 1:\n");
-   matrix_print(matrix_one);
-
-   printf("Matrix 2:\n");
-   matrix_print(matrix_two);
-
    matrix_t* matrix_three = matrix_multiply(matrix_one, matrix_two);
-   printf("Matrix 3:\n");
-   matrix_print(matrix_three);
-
    matrix_t *matrix_four = matrix_sort(matrix_three);
-   printf("Matrix 4:\n");
-   matrix_print(matrix_four);
 
    matrix_destroy(matrix_one);
    matrix_destroy(matrix_two);
    matrix_destroy(matrix_three);
+   matrix_destroy(matrix_four);
 }
 
 int main(int argc, char **argv) {

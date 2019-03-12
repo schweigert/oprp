@@ -1,7 +1,7 @@
 # GNU Makefile
 
 CC = gcc 
-CCFLAGS = -Wall 
+CCFLAGS = -Wall -O3
 LDFLAGS = 
 TARGET = main
 
@@ -20,7 +20,7 @@ main: matrix.o main.c
 matrix.o: matrix.c matrix.h
 
 clean:
-	rm -f *.o *~ $(TARGET)
+	rm -f *.o *~ $(TARGET) pg
 
 pg:
 	gcc -pg main.c matrix.c -o pg
