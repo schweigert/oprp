@@ -11,6 +11,7 @@ TARGET = main
 %: %.o
 	$(CC) $(LDFLAGS) $^ -o $@ 
 
+
 all: $(TARGET)
 
 # Dependencias
@@ -20,3 +21,9 @@ matrix.o: matrix.c matrix.h
 
 clean:
 	rm -f *.o *~ $(TARGET)
+
+pg:
+	gcc -pg main.c matrix.c -o pg
+
+gprof:
+	gprof pg gmon.out
