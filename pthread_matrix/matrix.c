@@ -1,7 +1,34 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <pthread.h>
 #include "matrix.h"
+
+#define N_CPU 4
+
+typedef struct {
+	int id;
+   matrix_t *matrix_one;
+   matrix_t *matrix_two;
+   matrix_t *matrix_ret;
+} add_thread;
+
+void *add_worker(void *arg) {
+   add_thread *addt = (add_thread *) arg;
+
+   int r, c;
+
+   for(r = 0; r < addt->matrix_one->rows; r++) {
+      if (r % N_CPU != addt->id) {
+         continue;
+      }
+      for (c = 0; c < addt->matrix_one->cols; c++) {
+         addt->matrix_ret->data[r][c] = addt->matrix_one->data[r][c] + addt->matrix_two->data[r][c];
+      }
+   }
+
+   return NULL;
+}
 
 matrix_t *matrix_create(int rows, int cols) {
    matrix_t *ret = NULL;
@@ -51,14 +78,26 @@ void matrix_fill(matrix_t *m, double val) {
 }
 
 matrix_t *matrix_sum(matrix_t *matrix_a, matrix_t *matrix_b) {
-   int r, c;
+   int i;
    matrix_t* matrix_r = matrix_create(matrix_a->rows, matrix_a->cols);
 
-   for (r = 0; r < matrix_a->rows; r++) {
-      for (c = 0; c < matrix_a->cols; c++) {
-         matrix_r->data[r][c] = matrix_a->data[r][c] + matrix_b->data[r][c];
-      }
+   add_thread *addt = NULL;
+   pthread_t *threads = NULL;
+
+   addt = (add_thread*) malloc(sizeof(add_thread) * N_CPU);
+   threads = (pthread_t*) malloc(sizeof(pthread_t) * N_CPU);
+
+   for(i = 0; i < N_CPU; i++) {
+      addt[i].id = i;
+      addt[i].matrix_one = matrix_a;
+      addt[i].matrix_two = matrix_b;
+      addt[i].matrix_ret = matrix_r;
+      pthread_create(&threads[i], NULL, add_worker, (void *) (addt + i));
    }
+
+   for (i = 0; i < N_CPU; i++) {
+		pthread_join(threads[i], NULL);		
+	}
 
    return matrix_r;
 }
