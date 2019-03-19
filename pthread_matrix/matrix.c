@@ -20,6 +20,14 @@ typedef struct {
    matrix_t *matrix_ret;
 } mpp_thread;
 
+typedef struct {
+	int id;
+   int len;
+   int start_slice;
+   int end_slice;
+   matrix_t *matrix;
+   matrix_t *matrix_ret;
+} sort_thread;
 
 void *add_worker(void *arg) {
    add_thread *addt = (add_thread *) arg;
@@ -51,6 +59,29 @@ void *multiply_worker(void *arg) {
          mppt->matrix_ret->data[r][c] = 0;
          for (i = 0; i < mppt->matrix_one->cols; i++) {
             mppt->matrix_ret->data[r][c] += mppt->matrix_one->data[r][i] * mppt->matrix_two->data[i][c];
+         }
+      }
+   }
+
+   return NULL;
+}
+
+void *sort_worker(void *arg) {
+   sort_thread *sortt = (sort_thread *) arg;
+
+   int i, j;
+   double swap;
+
+   double *vector = matrix_r->data[0];
+
+   for (i = 0; i < max; i++) {
+      vector[i] = matrix_a->data[0][i];
+      
+      for (j = 0; j < i; j++) {
+         if (vector[i] < vector[j]) {
+            swap = vector[i];
+            vector[i] = vector[j];
+            vector[j] = swap;
          }
       }
    }
@@ -157,24 +188,32 @@ matrix_t *matrix_multiply(matrix_t *matrix_a, matrix_t *matrix_b) {
 }
 
 matrix_t *matrix_sort(matrix_t *matrix_a) {
-   int i, j;
-   double swap;
-   int max = matrix_a->rows * matrix_a->cols;
-   matrix_t *matrix_r = matrix_create(matrix_a->rows, matrix_a->cols);
+   int i;
 
-   double *vector = matrix_r->data[0];
+   matrix_t* matrix_r = matrix_create(matrix_a->rows, matrix_a->cols);
 
-   for (i = 0; i < max; i++) {
-      vector[i] = matrix_a->data[0][i];
-      
-      for (j = 0; j < i; j++) {
-         if (vector[i] < vector[j]) {
-            swap = vector[i];
-            vector[i] = vector[j];
-            vector[j] = swap;
-         }
-      }
+   sort_thread *sortt = NULL;
+   pthread_t *threads = NULL;
+
+   sortt = (sort_thread*) malloc(sizeof(sort_thread) * N_CPU);
+   threads = (pthread_t*) malloc(sizeof(pthread_t) * N_CPU);
+
+   int len = matrix_a->rows * matrix_a->cols;
+
+
+   for(i = 0; i < N_CPU; i++) {
+      sortt[i].id = i;
+      sortt[i].len = len;
+      sortt[i].matrix = matrix_a;
+      sortt[i].matrix_ret = matrix_r;
+      sortt[i].start_slice = (int)((len / (float)(N_CPU)) * i);
+      sortt[i].end_slice = (int)((len / (float)(N_CPU)) * (i + 1));
+      pthread_create(&threads[i], NULL, sort_worker, (void *) (sortt + i));
    }
+
+   for (i = 0; i < N_CPU; i++) {
+		pthread_join(threads[i], NULL);		
+	}
 
    return matrix_r;
 }
