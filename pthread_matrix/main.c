@@ -17,7 +17,10 @@ void doSomething(int nrows, int ncols) {
    matrix_t* matrix_two = matrix_create(nrows, ncols);
    matrix_randfill(matrix_two);
 
-   matrix_t* matrix_three = matrix_sum(matrix_one, matrix_two);
+   matrix_t* matrix_three = matrix_multiply(matrix_one, matrix_two);
+   matrix_print(matrix_one);
+   matrix_print(matrix_two);
+   matrix_print(matrix_three);
 
    matrix_destroy(matrix_one);
    matrix_destroy(matrix_two);

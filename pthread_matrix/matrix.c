@@ -13,6 +13,14 @@ typedef struct {
    matrix_t *matrix_ret;
 } add_thread;
 
+typedef struct {
+	int id;
+   matrix_t *matrix_one;
+   matrix_t *matrix_two;
+   matrix_t *matrix_ret;
+} mpp_thread;
+
+
 void *add_worker(void *arg) {
    add_thread *addt = (add_thread *) arg;
 
@@ -24,6 +32,26 @@ void *add_worker(void *arg) {
       }
       for (c = 0; c < addt->matrix_one->cols; c++) {
          addt->matrix_ret->data[r][c] = addt->matrix_one->data[r][c] + addt->matrix_two->data[r][c];
+      }
+   }
+
+   return NULL;
+}
+
+void *multiply_worker(void *arg) {
+   mpp_thread *mppt = (mpp_thread *) arg;
+
+   int r, c, i;
+
+   for(r = 0; r < mppt->matrix_ret->rows; r++) {
+         if (r % N_CPU != mppt->id) {
+            continue;
+         }
+      for(c = 0; c < mppt->matrix_ret->cols; c++) {
+         mppt->matrix_ret->data[r][c] = 0;
+         for (i = 0; i < mppt->matrix_one->cols; i++) {
+            mppt->matrix_ret->data[r][c] += mppt->matrix_one->data[r][i] * mppt->matrix_two->data[i][c];
+         }
       }
    }
 
@@ -103,17 +131,27 @@ matrix_t *matrix_sum(matrix_t *matrix_a, matrix_t *matrix_b) {
 }
 
 matrix_t *matrix_multiply(matrix_t *matrix_a, matrix_t *matrix_b) {
-   int r, c, i;
+   int i;
+
    matrix_t* matrix_r = matrix_create(matrix_a->rows, matrix_b->cols);
 
-   for(r = 0; r < matrix_r->rows; r++) {
-      for(c = 0; c < matrix_r->cols; c++) {
-         matrix_r->data[r][c] = 0;
-         for (i = 0; i < matrix_a->cols; i++) {
-            matrix_r->data[r][c] += matrix_a->data[r][i] * matrix_b->data[i][c];
-         }
-      }
+   mpp_thread *mppt = NULL;
+   pthread_t *threads = NULL;
+
+   mppt = (mpp_thread*) malloc(sizeof(mpp_thread) * N_CPU);
+   threads = (pthread_t*) malloc(sizeof(pthread_t) * N_CPU);
+
+   for(i = 0; i < N_CPU; i++) {
+      mppt[i].id = i;
+      mppt[i].matrix_one = matrix_a;
+      mppt[i].matrix_two = matrix_b;
+      mppt[i].matrix_ret = matrix_r;
+      pthread_create(&threads[i], NULL, multiply_worker, (void *) (mppt + i));
    }
+
+   for (i = 0; i < N_CPU; i++) {
+		pthread_join(threads[i], NULL);		
+	}
 
    return matrix_r;
 }
