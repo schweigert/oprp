@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <pthread.h>
+#include <string.h>
 #include "matrix.h"
 
 #define N_CPU 4
@@ -21,13 +22,13 @@ typedef struct {
 } mpp_thread;
 
 typedef struct {
-	int id;
-   int len;
-   int start_slice;
-   int end_slice;
-   matrix_t *matrix;
-   matrix_t *matrix_ret;
+	double *vector;
+   int low;
+   int high;
+   int layer;
 } sort_thread;
+
+void deploy_quick_sort(double *vector, int low, int high, int layer);
 
 void *add_worker(void *arg) {
    add_thread *addt = (add_thread *) arg;
@@ -66,27 +67,91 @@ void *multiply_worker(void *arg) {
    return NULL;
 }
 
+void swap(double *a, double *b) {
+    double aux = *a;
+    *a = *b;
+    *b = aux;
+}
+
+int partition(double *vector, int low, int high) {
+    double pivot = vector[high];
+    int i = (low - 1);
+
+    for (int j = low; j <= high - 1; j++)
+    {
+        if (vector[j] <= pivot)
+        {
+            i++;
+            swap(&vector[i], &vector[j]);
+        }
+    }
+    swap(&vector[i + 1], &vector[high]);
+    return (i + 1);
+}
+
+void quick_sort(double *vector, int low, int high, int layer) {
+   if (low < high) {
+      int part = partition(vector, low, high);
+      layer ++;
+
+      deploy_quick_sort(vector, low, part - 1, layer);
+      deploy_quick_sort(vector, low, part - 1, layer);
+   }
+}
+
 void *sort_worker(void *arg) {
    sort_thread *sortt = (sort_thread *) arg;
+   quick_sort(sortt->vector, sortt->low, sortt->high, sortt->layer);
+   return NULL;
+}
 
-   int i, j;
-   double swap;
+void deploy_quick_sort(double *vector, int low, int high, int layer) {
+      if (low < high) {
+      int part = partition(vector, low, high);
+      if (layer < N_CPU) {
+         sort_thread *addt = NULL;
+         pthread_t *threads = NULL;
 
-   double *vector = matrix_r->data[0];
+         sort_thread* sortt = (sort_thread*) malloc(sizeof(sort_thread) * 2);
+         pthread_t* threads = (pthread_t*) malloc(sizeof(pthread_t) * 2);
 
-   for (i = 0; i < max; i++) {
-      vector[i] = matrix_a->data[0][i];
-      
-      for (j = 0; j < i; j++) {
-         if (vector[i] < vector[j]) {
-            swap = vector[i];
-            vector[i] = vector[j];
-            vector[j] = swap;
-         }
+         sortt[0].vector = vector;
+         sortt[1].vector = vector;
+
+         sortt[0].layer = layer;
+         sortt[1].layer = layer;
+         
+         sortt[0].low = low;
+         sortt[1].low = part + 1;
+         
+         sortt[0].high = part - 1;
+         sortt[1].high = high;
+
+         pthread_create(&threads[0], NULL, sort_worker, (void *) (sortt));
+         pthread_create(&threads[1], NULL, sort_worker, (void *) (sortt + 1));
+         pthread_join(threads[0], NULL);
+         pthread_join(threads[1], NULL);
+      }
+
+
+      } else {
+         quick_sort(vector, low, part - 1, layer);
+         quick_sort(vector, part + 1, high, layer);
       }
    }
+}
 
-   return NULL;
+void matrix_print(matrix_t *m) {
+   int i, j;
+   printf("\n--\n");
+   for (i = 0; i < m->rows; i++) {
+      for (j = 0; j < m->cols; j++) {
+         printf("%.1f ", m->data[i][j]);
+      }
+      printf("\n");
+   }
+   printf("\n--\n");
+   fflush(stdout);
 }
 
 matrix_t *matrix_create(int rows, int cols) {
@@ -188,45 +253,14 @@ matrix_t *matrix_multiply(matrix_t *matrix_a, matrix_t *matrix_b) {
 }
 
 matrix_t *matrix_sort(matrix_t *matrix_a) {
-   int i;
+    int rows_final = matrix_a->rows;
+    int cols_final = matrix_a->cols;
 
-   matrix_t* matrix_r = matrix_create(matrix_a->rows, matrix_a->cols);
+    matrix_t *resultado = matrix_create(rows_final, cols_final);
 
-   sort_thread *sortt = NULL;
-   pthread_t *threads = NULL;
+    memcpy(resultado->data[0], matrix_a->data[0], cols_final * rows_final * sizeof(double));
+    quick_sort(resultado->data[0], 0, rows_final * cols_final - 1, 0);
 
-   sortt = (sort_thread*) malloc(sizeof(sort_thread) * N_CPU);
-   threads = (pthread_t*) malloc(sizeof(pthread_t) * N_CPU);
-
-   int len = matrix_a->rows * matrix_a->cols;
-
-
-   for(i = 0; i < N_CPU; i++) {
-      sortt[i].id = i;
-      sortt[i].len = len;
-      sortt[i].matrix = matrix_a;
-      sortt[i].matrix_ret = matrix_r;
-      sortt[i].start_slice = (int)((len / (float)(N_CPU)) * i);
-      sortt[i].end_slice = (int)((len / (float)(N_CPU)) * (i + 1));
-      pthread_create(&threads[i], NULL, sort_worker, (void *) (sortt + i));
-   }
-
-   for (i = 0; i < N_CPU; i++) {
-		pthread_join(threads[i], NULL);		
-	}
-
-   return matrix_r;
+    return resultado;
 }
 
-void matrix_print(matrix_t *m) {
-   int i, j;
-   printf("\n--\n");
-   for (i = 0; i < m->rows; i++) {
-      for (j = 0; j < m->cols; j++) {
-         printf("%.1f ", m->data[i][j]);
-      }
-      printf("\n");
-   }
-   printf("\n--\n");
-   fflush(stdout);
-}
