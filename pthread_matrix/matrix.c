@@ -28,8 +28,6 @@ typedef struct {
    int layer;
 } sort_thread;
 
-void deploy_quick_sort(double *vector, int low, int high, int layer);
-
 void *add_worker(void *arg) {
    add_thread *addt = (add_thread *) arg;
 
@@ -89,56 +87,14 @@ int partition(double *vector, int low, int high) {
     return (i + 1);
 }
 
-void quick_sort(double *vector, int low, int high, int layer) {
-   if (low < high) {
-      int part = partition(vector, low, high);
-      layer ++;
+void quick_sort(double *vector, int low, int high) {
+    if (low < high)
+    {
+        int part = partition(vector, low, high);
 
-      deploy_quick_sort(vector, low, part - 1, layer);
-      deploy_quick_sort(vector, low, part - 1, layer);
-   }
-}
-
-void *sort_worker(void *arg) {
-   sort_thread *sortt = (sort_thread *) arg;
-   quick_sort(sortt->vector, sortt->low, sortt->high, sortt->layer);
-   return NULL;
-}
-
-void deploy_quick_sort(double *vector, int low, int high, int layer) {
-      if (low < high) {
-      int part = partition(vector, low, high);
-      if (layer < N_CPU) {
-         sort_thread *addt = NULL;
-         pthread_t *threads = NULL;
-
-         sort_thread* sortt = (sort_thread*) malloc(sizeof(sort_thread) * 2);
-         pthread_t* threads = (pthread_t*) malloc(sizeof(pthread_t) * 2);
-
-         sortt[0].vector = vector;
-         sortt[1].vector = vector;
-
-         sortt[0].layer = layer;
-         sortt[1].layer = layer;
-         
-         sortt[0].low = low;
-         sortt[1].low = part + 1;
-         
-         sortt[0].high = part - 1;
-         sortt[1].high = high;
-
-         pthread_create(&threads[0], NULL, sort_worker, (void *) (sortt));
-         pthread_create(&threads[1], NULL, sort_worker, (void *) (sortt + 1));
-         pthread_join(threads[0], NULL);
-         pthread_join(threads[1], NULL);
-      }
-
-
-      } else {
-         quick_sort(vector, low, part - 1, layer);
-         quick_sort(vector, part + 1, high, layer);
-      }
-   }
+        quick_sort(vector, low, part - 1);
+        quick_sort(vector, part + 1, high);
+    }
 }
 
 void matrix_print(matrix_t *m) {
@@ -259,7 +215,7 @@ matrix_t *matrix_sort(matrix_t *matrix_a) {
     matrix_t *resultado = matrix_create(rows_final, cols_final);
 
     memcpy(resultado->data[0], matrix_a->data[0], cols_final * rows_final * sizeof(double));
-    quick_sort(resultado->data[0], 0, rows_final * cols_final - 1, 0);
+    quick_sort(resultado->data[0], 0, rows_final * cols_final - 1);
 
     return resultado;
 }
