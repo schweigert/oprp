@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 #include "matrix.h"
 
 matrix_t *matrix_create(int rows, int cols) {
@@ -79,27 +80,47 @@ matrix_t *matrix_multiply(matrix_t *matrix_a, matrix_t *matrix_b) {
    return matrix_r;
 }
 
-matrix_t *matrix_sort(matrix_t *matrix_a) {
-   int i, j;
-   double swap;
-   int max = matrix_a->rows * matrix_a->cols;
-   matrix_t *matrix_r = matrix_create(matrix_a->rows, matrix_a->cols);
+void swap(double *a, double *b) {
+    double aux = *a;
+    *a = *b;
+    *b = aux;
+}
 
-   double *vector = matrix_r->data[0];
+int partition(double *vector, int low, int high) {
+   double pivot = vector[high];
+   int i = (low - 1);
 
-   for (i = 0; i < max; i++) {
-      vector[i] = matrix_a->data[0][i];
-      
-      for (j = 0; j < i; j++) {
-         if (vector[i] < vector[j]) {
-            swap = vector[i];
-            vector[i] = vector[j];
-            vector[j] = swap;
-         }
+   for (int j = low; j <= high - 1; j++) {
+      if (vector[j] <= pivot) {
+         i++;
+
+         swap(&vector[i], &vector[j]);
       }
    }
+   swap(&vector[i + 1], &vector[high]);
+   return (i + 1);
+}
 
-   return matrix_r;
+void quick_sort(double *vector, int low, int high) {
+    if (low < high)
+    {
+        int part = partition(vector, low, high);
+
+        quick_sort(vector, low, part - 1);
+        quick_sort(vector, part, high);
+    }
+}
+
+matrix_t *matrix_sort(matrix_t *matrix) {
+   int rows_final = matrix->rows;
+   int cols_final = matrix->cols;
+
+   matrix_t *resultado = matrix_create(rows_final, cols_final);
+
+   memcpy(resultado->data[0], matrix->data[0], cols_final * rows_final * sizeof(double));
+   quick_sort(resultado->data[0], 0, rows_final * cols_final - 1);
+
+   return resultado;
 }
 
 void matrix_print(matrix_t *m) {
