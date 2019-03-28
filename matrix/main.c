@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
    matrix_destroy(matrix_two);
 
    setlocale(LC_NUMERIC, "");
-   printf("%'.8f\n", nrows, ncols, end_time - start_time);
+   printf("%'.8f\n", end_time - start_time);
    fflush(stdout);
 
    return EXIT_SUCCESS;
