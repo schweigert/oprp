@@ -25,7 +25,7 @@ typedef struct {
 	double *vector;
    int low;
    int high;
-   int layer;
+   int deep;
 } sort_thread;
 
 void *add_worker(void *arg) {
@@ -66,35 +66,84 @@ void *multiply_worker(void *arg) {
 }
 
 void swap(double *a, double *b) {
-    double aux = *a;
-    *a = *b;
-    *b = aux;
+   double aux = *a;
+   *a = *b;
+   *b = aux;
 }
 
 int partition(double *vector, int low, int high) {
-    double pivot = vector[high];
-    int i = (low - 1);
+   double pivot = vector[high];
+   int i = (low - 1);
 
-    for (int j = low; j <= high - 1; j++)
-    {
-        if (vector[j] <= pivot)
-        {
-            i++;
-            swap(&vector[i], &vector[j]);
-        }
-    }
-    swap(&vector[i + 1], &vector[high]);
-    return (i + 1);
+   for (int j = low; j <= high - 1; j++) {
+      if (vector[j] <= pivot) {
+         i++;
+
+         swap(&vector[i], &vector[j]);
+      }
+   }
+   swap(&vector[i + 1], &vector[high]);
+   return (i + 1);
 }
 
-void quick_sort(double *vector, int low, int high) {
-    if (low < high)
-    {
-        int part = partition(vector, low, high);
+void quick_sort(double *vector, int low, int high, int deep) {
+   if (low < high) {
+      int part = partition(vector, low, high);
 
-        quick_sort(vector, low, part - 1);
-        quick_sort(vector, part + 1, high);
-    }
+      quick_sort(vector, low, part - 1, deep + 1);
+      quick_sort(vector, part, high, deep + 1);
+   }
+}
+
+void parallel_quick_sort(double *vector, int low, int high, int deep);
+
+void *sort_worker(void *arg) {
+   sort_thread *sortt = (sort_thread *) arg;
+   parallel_quick_sort(sortt->vector, sortt->low, sortt->high, sortt->deep);
+   return NULL;
+}
+
+void parallel_quick_sort(double *vector, int low, int high, int deep) {
+   if (low < high) {
+      int part = partition(vector, low, high);
+      if (deep * deep <= N_CPU) {
+         sort_thread *sortt = NULL;
+         pthread_t *threads = NULL;
+
+         sortt = (sort_thread*) malloc(sizeof(sort_thread) * 2);
+         threads = (pthread_t*) malloc(sizeof(pthread_t) * 2);
+
+         sortt[0].vector = vector;
+         sortt[0].low = low;
+         sortt[0].high = part - 1;
+         sortt[0].deep = deep + 1;
+
+         sortt[1].vector = vector;
+         sortt[1].low = part;
+         sortt[1].high = high;
+         sortt[1].deep = deep + 1;
+         pthread_create(&threads[0], NULL, sort_worker, (void *) (sortt));
+         pthread_create(&threads[1], NULL, sort_worker, (void *) (sortt + 1));
+
+         pthread_join(threads[0], NULL);
+         pthread_join(threads[1], NULL);
+      } else {
+         quick_sort(vector, low, part - 1, deep + 1);
+         quick_sort(vector, part, high, deep + 1);
+      }
+   }
+}
+
+matrix_t *matrix_sort(matrix_t *matrix) {
+   int rows_final = matrix->rows;
+   int cols_final = matrix->cols;
+
+   matrix_t *resultado = matrix_create(rows_final, cols_final);
+
+   memcpy(resultado->data[0], matrix->data[0], cols_final * rows_final * sizeof(double));
+   parallel_quick_sort(resultado->data[0], 0, rows_final * cols_final - 1, 0);
+
+   return resultado;
 }
 
 void matrix_print(matrix_t *m) {
@@ -207,16 +256,3 @@ matrix_t *matrix_multiply(matrix_t *matrix_a, matrix_t *matrix_b) {
 
    return matrix_r;
 }
-
-matrix_t *matrix_sort(matrix_t *matrix_a) {
-    int rows_final = matrix_a->rows;
-    int cols_final = matrix_a->cols;
-
-    matrix_t *resultado = matrix_create(rows_final, cols_final);
-
-    memcpy(resultado->data[0], matrix_a->data[0], cols_final * rows_final * sizeof(double));
-    quick_sort(resultado->data[0], 0, rows_final * cols_final - 1);
-
-    return resultado;
-}
-
