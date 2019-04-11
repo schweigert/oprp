@@ -5,6 +5,8 @@
 #include <locale.h>
 #include "matrix.h"
 
+#define N_CPU 2
+
 matrix_t* matrix_one;
 matrix_t* matrix_two;
 
@@ -19,6 +21,8 @@ void doSomething() {
 }
 
 int main(int argc, char **argv) {
+   omp_set_num_threads(N_CPU);
+
    double start_time, end_time;
     int nrows, ncols;
 

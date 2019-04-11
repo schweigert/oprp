@@ -15,7 +15,7 @@ double wtime() {
 }
 
 void doSomething() {
-   matrix_t* matrix_r = matrix_sum(matrix_one, matrix_two);
+   matrix_t* matrix_r = matrix_sort(matrix_one);
 }
 
 int main(int argc, char **argv) {

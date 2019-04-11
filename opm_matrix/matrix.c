@@ -109,26 +109,30 @@ void quick_sort(double *vector, int low, int high, int deep) {
    if (low < high)
    {
       int part = partition(vector, low, high);
-      if (deep > omp_get_max_threads()) {
+
+      if (deep * 2 > omp_get_num_threads()) {
          quick_sort(vector, low, part - 1, deep + 1);
-         quick_sort(vector, part, high, deep + 1);
-      } else {
-         #pragma omp parallel num_threads(2)
+         quick_sort(vector, part + 1, high, deep + 1);
+         return;
+      }
+
+
+      #pragma omp parallel
+      {
+         #pragma omp sections
          {
-            #pragma omp sections
+            #pragma omp section
             {
-               #pragma omp section
-               {
-                  quick_sort(vector, low, part - 1, deep + 1);
-               }
-               #pragma omp section
-               {
-                  quick_sort(vector, part, high, deep + 1);
-               }
+               quick_sort(vector, low, part - 1, deep++);
+            }
+
+            #pragma omp section
+            {
+               quick_sort(vector, part + 1, high, deep++);
             }
          }
       }
-   }
+   }  
 }
 
 matrix_t *matrix_sort(matrix_t *matrix) {
